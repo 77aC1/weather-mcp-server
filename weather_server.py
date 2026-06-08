@@ -1,22 +1,17 @@
-import httpx
 import os
+import json
+import urllib.request
 from fastmcp import FastMCP
 
 mcp = FastMCP("Weather")
 
 @mcp.tool
-async def get_weather(city: str) -> str:
-    async with httpx.AsyncClient(timeout=15) as c:
-        r = await c.get(
-            "https://api.open-meteo.com/v1/forecast",
-            params={
-                "latitude": 39.9,
-                "longitude": 116.4,
-                "current": "temperature_2m,wind_speed_10m",
-                "timezone": "Asia/Shanghai"
-            }
-        )
-        w = r.json()["current"]
+def get_weather(city: str) -> str:
+    url = "https://api.open-meteo.com/v1/forecast?latitude=39.9&longitude=116.4&current=temperature_2m,wind_speed_10m&timezone=Asia/Shanghai"
+    req = urllib.request.Request(url)
+    with urllib.request.urlopen(req, timeout=15) as r:
+        data = json.loads(r.read())
+        w = data["current"]
         return f"北京 {w['temperature_2m']}°C 风速{w['wind_speed_10m']}km/h"
 
 if __name__ == "__main__":
