@@ -7,72 +7,45 @@ mcp = FastMCP("Weather")
 API_KEY = os.getenv("QWEATHER_KEY", "")
 
 @mcp.tool
+def hello(name: str) -> str:
+    """测试工具"""
+    return f"Hello {name}! 🎉"
+
+@mcp.tool
 async def get_weather(city: str) -> str:
-    """查询指定城市的实时天气"""
+    """查询城市实时天气"""
     if not API_KEY:
-        return "请先设置和风天气 API Key"
-    
-    async with httpx.AsyncClient() as client:
-        geo = await client.get(
-            "https://geoapi.qweather.com/v2/city/lookup",
-            params={"location": city, "key": API_KEY}
-        )
-        data = geo.json()
-        if data["code"] != "200":
-            return f"未找到城市：{city}"
-        
-        city_id = data["location"][0]["id"]
-        
-        weather = await client.get(
-            "https://devapi.qweather.com/v7/weather/now",
-            params={"location": city_id, "key": API_KEY}
-        )
-        w = weather.json()
-        if w["code"] != "200":
-            return "获取天气失败"
-        
-        now = w["now"]
-        return (
-            f"📍 {city} 实时天气\n"
-            f"🌡️ 温度：{now['temp']}°C（体感 {now['feelsLike']}°C）\n"
-            f"☁️ 天气：{now['text']}\n"
-            f"💧 湿度：{now['humidity']}%\n"
-            f"🌬️ 风：{now['windDir']} {now['windSpeed']}km/h"
-        )
+        return "请先设置 QWEATHER_KEY"
+    async with httpx.AsyncClient() as c:
+        r = await c.get("https://geoapi.qweather.com/v2/city/lookup",
+            params={"location": city, "key": API_KEY})
+        d = r.json()
+        if d["code"] != "200":
+            return f"找不到城市：{city}"
+        cid = d["location"][0]["id"]
+        r2 = await c.get("https://devapi.qweather.com/v7/weather/now",
+            params={"location": cid, "key": API_KEY})
+        w = r2.json()["now"]
+        return f"📍{city}\n🌡️{w['temp']}°C 体感{w['feelsLike']}°C\n☁️{w['text']}\n💧湿度{w['humidity']}%\n🌬️{w['windDir']}{w['windSpeed']}km/h"
 
 @mcp.tool
 async def get_forecast(city: str) -> str:
-    """查询指定城市未来3天天气预报"""
+    """查询城市3天预报"""
     if not API_KEY:
-        return "请先设置和风天气 API Key"
-    
-    async with httpx.AsyncClient() as client:
-        geo = await client.get(
-            "https://geoapi.qweather.com/v2/city/lookup",
-            params={"location": city, "key": API_KEY}
-        )
-        data = geo.json()
-        if data["code"] != "200":
-            return f"未找到城市：{city}"
-
-        city_id = data["location"][0]["id"]
-
-        fc = await client.get(
-            "https://devapi.qweather.com/v7/weather/3d",
-            params={"location": city_id, "key": API_KEY}
-        )
-        f = fc.json()
-        if f["code"] != "200":
-            return "获取预报失败"
-
-        result = [f"📅 {city} 未来3天预报"]
-        for day in f["daily"]:
-            result.append(
-                f"\n📆 {day['fxDate']}"
-                f"\n  🌡️ {day['tempMin']}~{day['tempMax']}°C"
-                f"\n  ☁️ {day['textDay']} / {day['textNight']}"
-            )
-        return "\n".join(result)
+        return "请先设置 QWEATHER_KEY"
+    async with httpx.AsyncClient() as c:
+        r = await c.get("https://geoapi.qweather.com/v2/city/lookup",
+            params={"location": city, "key": API_KEY})
+        d = r.json()
+        if d["code"] != "200":
+            return f"找不到城市：{city}"
+        cid = d["location"][0]["id"]
+        r2 = await c.get("https://devapi.qweather.com/v7/weather/3d",
+            params={"location": cid, "key": API_KEY})
+        lines = [f"📅{city} 3天预报"]
+        for day in r2.json()["daily"]:
+            lines.append(f"\n📆{day['fxDate']} {day['tempMin']}~{day['tempMax']}°C {day['textDay']}")
+        return "\n".join(lines)
 
 if __name__ == "__main__":
     import os
