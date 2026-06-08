@@ -75,4 +75,6 @@ async def get_forecast(city: str) -> str:
         return "\n".join(result)
 
 if __name__ == "__main__":
-    mcp.run(transport="sse")
+    import os
+    port = int(os.getenv("PORT", "8000"))
+    mcp.run(transport="sse", host="0.0.0.0", port=port)
